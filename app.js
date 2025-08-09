@@ -144,41 +144,17 @@ class PatientManagementSystem {
                     }
                 ],
                 "sampleLabResults": [
-                    {
-                        "patientId": 1,
-                        "testName": "Morfologia",
-                        "results": {
-                            "2024-07-01": "WBC: 6.5, RBC: 4.8, HGB: 14.2, PLT: 280",
-                            "2024-06-01": "WBC: 7.1, RBC: 4.6, HGB: 13.9, PLT: 295",
-                            "2024-05-01": "WBC: 6.8, RBC: 4.7, HGB: 14.0, PLT: 275"
-                        }
-                    },
-                    {
-                        "patientId": 1,
-                        "testName": "Biochemia",
-                        "results": {
-                            "2024-07-01": "Glukoza: 95, Kreatynina: 0.9, Mocznik: 28",
-                            "2024-06-01": "Glukoza: 102, Kreatynina: 0.8, Mocznik: 32",
-                            "2024-05-01": "Glukoza: 88, Kreatynina: 0.9, Mocznik: 30"
-                        }
-                    },
-                    {
-                        "patientId": 2,
-                        "testName": "Morfologia",
-                        "results": {
-                            "2024-07-15": "WBC: 5.8, RBC: 4.2, HGB: 12.1, PLT: 320",
-                            "2024-06-15": "WBC: 6.2, RBC: 4.1, HGB: 12.3, PLT: 310"
-                        }
-                    },
-                    {
-                        "patientId": 2,
-                        "testName": "HbA1c",
-                        "results": {
-                            "2024-07-15": "6.8%",
-                            "2024-04-15": "7.2%",
-                            "2024-01-15": "7.8%"
-                        }
-                    }
+                    { "patientId": 1, "testName": "Morfologia", "date": "2024-07-01", "value": "WBC: 6.5, RBC: 4.8, HGB: 14.2, PLT: 280" },
+                    { "patientId": 1, "testName": "Morfologia", "date": "2024-06-01", "value": "WBC: 7.1, RBC: 4.6, HGB: 13.9, PLT: 295" },
+                    { "patientId": 1, "testName": "Morfologia", "date": "2024-05-01", "value": "WBC: 6.8, RBC: 4.7, HGB: 14.0, PLT: 275" },
+                    { "patientId": 1, "testName": "Biochemia", "date": "2024-07-01", "value": "Glukoza: 95, Kreatynina: 0.9, Mocznik: 28" },
+                    { "patientId": 1, "testName": "Biochemia", "date": "2024-06-01", "value": "Glukoza: 102, Kreatynina: 0.8, Mocznik: 32" },
+                    { "patientId": 1, "testName": "Biochemia", "date": "2024-05-01", "value": "Glukoza: 88, Kreatynina: 0.9, Mocznik: 30" },
+                    { "patientId": 2, "testName": "Morfologia", "date": "2024-07-15", "value": "WBC: 5.8, RBC: 4.2, HGB: 12.1, PLT: 320" },
+                    { "patientId": 2, "testName": "Morfologia", "date": "2024-06-15", "value": "WBC: 6.2, RBC: 4.1, HGB: 12.3, PLT: 310" },
+                    { "patientId": 2, "testName": "HbA1c", "date": "2024-07-15", "value": "6.8%" },
+                    { "patientId": 2, "testName": "HbA1c", "date": "2024-04-15", "value": "7.2%" },
+                    { "patientId": 2, "testName": "HbA1c", "date": "2024-01-15", "value": "7.8%" }
                 ],
                 "rolePermissions": {
                     "admin": {
@@ -285,6 +261,11 @@ class PatientManagementSystem {
         // Import badań
         document.getElementById('add-result-row').addEventListener('click', () => this.addLabResultRow());
         document.getElementById('import-lab-results').addEventListener('click', () => this.handleLabImport());
+        document.getElementById('lab-filter-btn').addEventListener('click', () => {
+            const testName = document.getElementById('lab-filter-test').value;
+            const date = document.getElementById('lab-filter-date').value;
+            this.renderLabResults(this.currentPatientId, { testName, date });
+        });
 
         // Panel administratora
         document.querySelectorAll('.admin-tab').forEach(tab => {
@@ -497,6 +478,9 @@ class PatientManagementSystem {
         
         this.renderPatientBasicInfo(patient);
         this.renderMedicalRecords(patientId);
+        this.populateLabFilterOptions(patientId);
+        document.getElementById('lab-filter-test').value = '';
+        document.getElementById('lab-filter-date').value = '';
         this.renderLabResults(patientId);
         this.renderComments(patientId);
         this.updateProfileButtons();
@@ -569,21 +553,40 @@ class PatientManagementSystem {
         `).join('');
     }
 
-    renderLabResults(patientId) {
+    renderLabResults(patientId, filters = {}) {
         const resultsContainer = document.getElementById('lab-results');
-        const results = this.labResults.filter(result => result.patientId === patientId);
-        
+        let results = this.labResults.filter(r => r.patientId === patientId);
+
+        if (filters.testName) {
+            results = results.filter(r => r.testName === filters.testName);
+        }
+        if (filters.date) {
+            results = results.filter(r => r.date === filters.date);
+        }
+
         if (results.length === 0) {
             resultsContainer.innerHTML = '<p class="text-center">Brak wyników badań</p>';
             return;
         }
 
-        resultsContainer.innerHTML = results.map(test => {
-            const dates = Object.keys(test.results).sort((a, b) => new Date(b) - new Date(a));
-            
+        const grouped = results.reduce((acc, curr) => {
+            if (!acc[curr.testName]) acc[curr.testName] = [];
+            acc[curr.testName].push(curr);
+            return acc;
+        }, {});
+
+        resultsContainer.innerHTML = Object.entries(grouped).map(([testName, rows]) => {
+            const rowsHtml = rows
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .map(r => `
+                    <tr>
+                        <td>${this.formatDate(r.date)}</td>
+                        <td>${r.value}</td>
+                    </tr>
+                `).join('');
             return `
                 <div class="lab-test">
-                    <div class="lab-test-header">${test.testName}</div>
+                    <div class="lab-test-header">${testName}</div>
                     <table class="results-table">
                         <thead>
                             <tr>
@@ -591,14 +594,7 @@ class PatientManagementSystem {
                                 <th>Wynik</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            ${dates.map(date => `
-                                <tr>
-                                    <td>${this.formatDate(date)}</td>
-                                    <td>${test.results[date]}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
+                        <tbody>${rowsHtml}</tbody>
                     </table>
                 </div>
             `;
@@ -692,11 +688,21 @@ class PatientManagementSystem {
     populatePatientSelect() {
         const select = document.getElementById('import-patient-select');
         const accessiblePatients = this.getAccessiblePatients();
-        
-        select.innerHTML = '<option value="">Wybierz pacjenta</option>' + 
-            accessiblePatients.map(patient => 
+
+        select.innerHTML = '<option value="">Wybierz pacjenta</option>' +
+            accessiblePatients.map(patient =>
                 `<option value="${patient.id}">${patient.firstName} ${patient.lastName}</option>`
             ).join('');
+    }
+
+    populateLabFilterOptions(patientId) {
+        const select = document.getElementById('lab-filter-test');
+        const tests = [...new Set(this.labResults
+            .filter(r => r.patientId === patientId)
+            .map(r => r.testName))];
+        select.innerHTML = '<option value="">Wszystkie</option>' +
+            tests.map(test => `<option value="${test}">${test}</option>`).join('');
+        document.getElementById('lab-filter-date').value = '';
     }
 
     addLabResultRow() {
@@ -721,51 +727,89 @@ class PatientManagementSystem {
     handleLabImport() {
         const patientId = parseInt(document.getElementById('import-patient-select').value);
         const testName = document.getElementById('import-test-name').value;
-        
+        const fileInput = document.getElementById('lab-file-input');
+        const file = fileInput.files[0];
+
         if (!patientId || !testName) {
             alert('Wybierz pacjenta i wprowadź nazwę badania');
             return;
         }
 
+        if (file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (ext === 'csv') {
+                this.importFromCSV(file, patientId, testName);
+            } else if (ext === 'xlsx') {
+                this.importFromXLSX(file, patientId, testName);
+            } else {
+                alert('Nieobsługiwany format pliku');
+            }
+            return;
+        }
+
         const rows = document.querySelectorAll('#lab-results-tbody tr');
-        const results = {};
-        
+        const entries = [];
+
         rows.forEach(row => {
             const date = row.querySelector('input[name="result-date"]').value;
             const value = row.querySelector('input[name="result-value"]').value;
-            
+
             if (date && value) {
-                results[date] = value;
+                entries.push({ patientId, testName, date, value });
             }
         });
 
-        if (Object.keys(results).length === 0) {
+        if (entries.length === 0) {
             alert('Wprowadź przynajmniej jeden wynik');
             return;
         }
 
-        // Sprawdź czy badanie już istnieje dla tego pacjenta
-        const existingTest = this.labResults.find(test => 
-            test.patientId === patientId && test.testName === testName
-        );
+        this.labResults.push(...entries);
+        this.postImport(patientId);
+    }
 
-        if (existingTest) {
-            // Dodaj nowe wyniki do istniejącego badania
-            Object.assign(existingTest.results, results);
-        } else {
-            // Utwórz nowe badanie
-            this.labResults.push({
-                patientId,
-                testName,
-                results
+    importFromCSV(file, patientId, testName) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const lines = e.target.result.split(/\r?\n/).filter(l => l.trim());
+            lines.slice(1).forEach(line => {
+                const [date, value] = line.split(',').map(s => s.trim());
+                if (date && value) {
+                    this.labResults.push({ patientId, testName, date, value });
+                }
             });
-        }
+            this.postImport(patientId);
+        };
+        reader.readAsText(file);
+    }
 
-        this.saveData();
-        alert('Badania zostały importowane pomyślnie!');
-        
-        // Wyczyść formularz
+    importFromXLSX(file, patientId, testName) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            rows.slice(1).forEach(row => {
+                const date = row[0];
+                const value = row[1];
+                if (date && value) {
+                    let formattedDate = date;
+                    if (typeof date === 'number') {
+                        const d = XLSX.SSF.parse_date_code(date);
+                        formattedDate = `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
+                    }
+                    this.labResults.push({ patientId, testName, date: formattedDate, value });
+                }
+            });
+            this.postImport(patientId);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    resetLabImportForm() {
         document.getElementById('import-test-name').value = '';
+        document.getElementById('lab-file-input').value = '';
         document.getElementById('lab-results-tbody').innerHTML = `
             <tr>
                 <td><input type="date" class="form-control" name="result-date"></td>
@@ -773,6 +817,16 @@ class PatientManagementSystem {
                 <td><button type="button" class="btn btn--outline btn--sm remove-result"><i class="fas fa-trash"></i></button></td>
             </tr>
         `;
+    }
+
+    postImport(patientId) {
+        this.saveData();
+        alert('Badania zostały importowane pomyślnie!');
+        this.resetLabImportForm();
+        if (this.currentPatientId === patientId) {
+            this.populateLabFilterOptions(patientId);
+            this.renderLabResults(patientId);
+        }
     }
 
     // Panel administratora

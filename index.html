@@ -142,6 +142,19 @@
                             <h3><i class="fas fa-flask"></i> Wyniki badań laboratoryjnych</h3>
                         </div>
                         <div class="card__body">
+                            <div class="lab-filters">
+                                <div class="form-group">
+                                    <label for="lab-filter-test" class="form-label">Badanie</label>
+                                    <select id="lab-filter-test" class="form-control">
+                                        <option value="">Wszystkie</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="lab-filter-date" class="form-label">Data</label>
+                                    <input type="date" id="lab-filter-date" class="form-control">
+                                </div>
+                                <button id="lab-filter-btn" class="btn btn--outline btn--sm">Filtruj</button>
+                            </div>
                             <div id="lab-results" class="lab-results"></div>
                         </div>
                     </div>
@@ -260,6 +273,10 @@
                         <div class="form-group">
                             <label for="import-test-name" class="form-label">Nazwa badania</label>
                             <input type="text" id="import-test-name" class="form-control" placeholder="np. Morfologia, Biochemia">
+                        </div>
+                        <div class="form-group">
+                            <label for="lab-file-input" class="form-label">Plik z wynikami (CSV/XLSX)</label>
+                            <input type="file" id="lab-file-input" class="form-control" accept=".csv,.xlsx">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Wyniki badań</label>
@@ -398,6 +415,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
