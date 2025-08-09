@@ -140,6 +140,9 @@
                     <div class="card profile-card">
                         <div class="card__header">
                             <h3><i class="fas fa-flask"></i> Wyniki badań laboratoryjnych</h3>
+                            <button id="add-lab-result-btn" class="btn btn--primary btn--sm hidden">
+                                <i class="fas fa-plus"></i> Dodaj wynik
+                            </button>
                         </div>
                         <div class="card__body">
                             <div class="lab-filter">
@@ -368,15 +371,15 @@
                     </div>
                     <div class="form-group">
                         <label for="record-description" class="form-label">Opis</label>
-                        <textarea id="record-description" class="form-control" rows="3" required></textarea>
+                        <textarea id="record-description" class="form-control" rows="3" placeholder="Krótki opis wizyty" required></textarea>
                     </div>
                     <div class="form-group">
                         <label for="record-diagnosis" class="form-label">Diagnoza</label>
-                        <input type="text" id="record-diagnosis" class="form-control">
+                        <input type="text" id="record-diagnosis" class="form-control" placeholder="np. Grypa">
                     </div>
                     <div class="form-group">
                         <label for="record-treatment" class="form-label">Leczenie</label>
-                        <textarea id="record-treatment" class="form-control" rows="2"></textarea>
+                        <textarea id="record-treatment" class="form-control" rows="2" placeholder="np. Antybiotyk"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -397,11 +400,40 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label for="comment-text" class="form-label">Komentarz</label>
-                        <textarea id="comment-text" class="form-control" rows="4" required></textarea>
+                        <textarea id="comment-text" class="form-control" rows="4" placeholder="Dodaj komentarz..." required></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn--primary">Dodaj komentarz</button>
+                    <button type="button" class="btn btn--outline modal-close">Anuluj</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="add-lab-result-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Dodaj wynik badania</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="add-lab-result-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="lab-test-name" class="form-label">Nazwa badania</label>
+                        <input type="text" id="lab-test-name" class="form-control" placeholder="np. Morfologia" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lab-test-date" class="form-label">Data</label>
+                        <input type="date" id="lab-test-date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lab-test-value" class="form-label">Wartość</label>
+                        <input type="text" id="lab-test-value" class="form-control" placeholder="np. 5.1 mmol/L" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn--primary">Zapisz</button>
                     <button type="button" class="btn btn--outline modal-close">Anuluj</button>
                 </div>
             </form>
