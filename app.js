@@ -44,7 +44,12 @@ async function loadPatients() {
       document.getElementById('dashboard-section').classList.remove('active');
       document.getElementById('patient-profile-section').classList.add('active');
       document.getElementById('patient-name').textContent = card.getAttribute('data-name');
+      document.getElementById('add-record-btn').classList.remove('hidden');
+      document.getElementById('add-comment-btn').classList.remove('hidden');
+      document.getElementById('add-lab-result-btn').classList.remove('hidden');
+      loadMedicalRecords();
       loadLabResults();
+      loadComments();
     });
   });
 }
@@ -52,6 +57,10 @@ async function loadPatients() {
 document.getElementById('back-to-dashboard').addEventListener('click', () => {
   document.getElementById('patient-profile-section').classList.remove('active');
   document.getElementById('dashboard-section').classList.add('active');
+  currentPatientId = null;
+  document.getElementById('add-record-btn').classList.add('hidden');
+  document.getElementById('add-comment-btn').classList.add('hidden');
+  document.getElementById('add-lab-result-btn').classList.add('hidden');
 });
 
 document.getElementById('import-lab-results').addEventListener('click', async () => {
@@ -89,3 +98,147 @@ async function loadLabResults() {
 }
 
 document.getElementById('filter-lab-results').addEventListener('click', loadLabResults);
+
+function openModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  const first = modal.querySelector('input, textarea, select');
+  if (first) first.focus();
+}
+
+function closeModal(modal) {
+  if (typeof modal === 'string') {
+    modal = document.getElementById(modal);
+  }
+  if (modal) modal.classList.add('hidden');
+}
+
+document.querySelectorAll('.modal-close').forEach(btn => {
+  btn.addEventListener('click', () => closeModal(btn.closest('.modal')));
+});
+
+document.getElementById('add-record-btn').addEventListener('click', () => {
+  if (currentPatientId) openModal('add-record-modal');
+});
+document.getElementById('add-comment-btn').addEventListener('click', () => {
+  if (currentPatientId) openModal('add-comment-modal');
+});
+document.getElementById('add-lab-result-btn').addEventListener('click', () => {
+  if (currentPatientId) openModal('add-lab-result-modal');
+});
+
+function setupFormNavigation(form) {
+  const fields = Array.from(form.querySelectorAll('input, select, textarea'));
+  fields.forEach((field, index) => {
+    field.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const next = fields[index + 1];
+        if (next) {
+          next.focus();
+        } else {
+          form.requestSubmit();
+        }
+      }
+    });
+  });
+}
+
+setupFormNavigation(document.getElementById('add-record-form'));
+setupFormNavigation(document.getElementById('add-comment-form'));
+setupFormNavigation(document.getElementById('add-lab-result-form'));
+
+async function loadMedicalRecords() {
+  if (!currentPatientId) return;
+  const res = await fetch(`/api/medical-records?patientId=${currentPatientId}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) return;
+  const records = await res.json();
+  const container = document.getElementById('medical-records');
+  container.innerHTML = records.map(r => `<div><strong>${r.date}</strong> - ${r.type}: ${r.description}</div>`).join('');
+}
+
+async function loadComments() {
+  if (!currentPatientId) return;
+  const res = await fetch(`/api/comments?patientId=${currentPatientId}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) return;
+  const comments = await res.json();
+  const container = document.getElementById('comments-section');
+  container.innerHTML = comments.map(c => `<div>${c.text} (${c.date})</div>`).join('');
+}
+
+document.getElementById('add-record-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!currentPatientId) return;
+  const payload = {
+    patientId: currentPatientId,
+    date: document.getElementById('record-date').value,
+    type: document.getElementById('record-type').value,
+    description: document.getElementById('record-description').value,
+    diagnosis: document.getElementById('record-diagnosis').value,
+    treatment: document.getElementById('record-treatment').value
+  };
+  const res = await fetch('/api/medical-records', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
+  });
+  if (res.ok) {
+    closeModal('add-record-modal');
+    e.target.reset();
+    loadMedicalRecords();
+  }
+});
+
+document.getElementById('add-comment-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!currentPatientId) return;
+  const payload = {
+    patientId: currentPatientId,
+    text: document.getElementById('comment-text').value
+  };
+  const res = await fetch('/api/comments', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
+  });
+  if (res.ok) {
+    closeModal('add-comment-modal');
+    e.target.reset();
+    loadComments();
+  }
+});
+
+document.getElementById('add-lab-result-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!currentPatientId) return;
+  const payload = {
+    patientId: currentPatientId,
+    testName: document.getElementById('lab-test-name').value,
+    date: document.getElementById('lab-test-date').value,
+    value: document.getElementById('lab-test-value').value
+  };
+  const res = await fetch('/api/lab-results', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
+  });
+  if (res.ok) {
+    closeModal('add-lab-result-modal');
+    e.target.reset();
+    loadLabResults();
+  }
+});
