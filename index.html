@@ -142,6 +142,12 @@
                             <h3><i class="fas fa-flask"></i> Wyniki badań laboratoryjnych</h3>
                         </div>
                         <div class="card__body">
+                            <div class="lab-filter">
+                                <input type="text" id="filter-test-name" class="form-control" placeholder="Nazwa badania">
+                                <input type="date" id="filter-from-date" class="form-control">
+                                <input type="date" id="filter-to-date" class="form-control">
+                                <button type="button" id="filter-lab-results" class="btn btn--outline btn--sm">Filtruj</button>
+                            </div>
                             <div id="lab-results" class="lab-results"></div>
                         </div>
                     </div>
@@ -257,11 +263,15 @@
                                 <option value="">Wybierz pacjenta</option>
                             </select>
                         </div>
-                        <div class="form-group">
+                         <div class="form-group">
                             <label for="import-test-name" class="form-label">Nazwa badania</label>
                             <input type="text" id="import-test-name" class="form-control" placeholder="np. Morfologia, Biochemia">
-                        </div>
-                        <div class="form-group">
+                         </div>
+                         <div class="form-group">
+                             <label for="lab-file" class="form-label">Plik CSV/XLSX</label>
+                             <input type="file" id="lab-file" class="form-control" accept=".csv,.xlsx">
+                         </div>
+                         <div class="form-group">
                             <label class="form-label">Wyniki badań</label>
                             <div id="lab-import-table" class="lab-import-table">
                                 <table class="results-table">
