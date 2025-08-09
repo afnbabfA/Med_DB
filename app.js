@@ -979,10 +979,9 @@ class PatientManagementSystem {
 }
 
 // Inicjalizacja aplikacji
-let pms;
 document.addEventListener('DOMContentLoaded', () => {
-    pms = new PatientManagementSystem();
+    window.pms = new PatientManagementSystem();
 });
 
 // Eksportuj funkcje globalne dla onclick handlerów
-window.pms = pms;
+// (window.pms jest ustawione powyżej)
