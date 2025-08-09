@@ -1,0 +1,30 @@
+const { Pool } = require('pg');
+const { newDb } = require('pg-mem');
+
+let pool;
+
+if (process.env.NODE_ENV === 'test') {
+  const db = newDb({ noAstCoverageCheck: true });
+  db.public.none(`
+    CREATE TABLE users (
+      id SERIAL PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      role TEXT NOT NULL
+    );
+    CREATE TABLE patients (
+      id SERIAL PRIMARY KEY,
+      first_name TEXT NOT NULL,
+      last_name TEXT NOT NULL,
+      pesel TEXT NOT NULL
+    );
+  `);
+  const adapter = db.adapters.createPg();
+  pool = new adapter.Pool();
+} else {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/postgres'
+  });
+}
+
+module.exports = pool;
