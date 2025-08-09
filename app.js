@@ -10,6 +10,7 @@ class PatientManagementSystem {
         this.labResults = [];
         this.comments = [];
         this.rolePermissions = {};
+        this.permissions = {};
         
         this.initializeData();
         this.initializeEventListeners();
@@ -322,7 +323,9 @@ class PatientManagementSystem {
         const savedUser = localStorage.getItem('pms_current_user');
         if (savedUser) {
             this.currentUser = JSON.parse(savedUser);
-            this.showMainApp();
+            this.fetchPermissions().then(() => {
+                this.showMainApp();
+            });
         } else {
             this.showLoginPage();
         }
@@ -338,7 +341,9 @@ class PatientManagementSystem {
         if (user) {
             this.currentUser = user;
             localStorage.setItem('pms_current_user', JSON.stringify(user));
-            this.showMainApp();
+            this.fetchPermissions().then(() => {
+                this.showMainApp();
+            });
             this.clearLoginError();
         } else {
             this.showLoginError('Nieprawidłowa nazwa użytkownika lub hasło');
@@ -374,6 +379,7 @@ class PatientManagementSystem {
         this.updateUserInfo();
         this.showDashboard();
         this.updateNavigation();
+        this.updateUIBasedOnPermissions();
     }
 
     updateUserInfo() {
@@ -898,6 +904,25 @@ class PatientManagementSystem {
         this.renderComments(this.currentPatientId);
         
         alert('Komentarz został dodany!');
+    }
+
+    async fetchPermissions() {
+        const response = await fetch('/permissions', {
+            headers: { 'user-id': this.currentUser.id }
+        });
+        this.permissions = await response.json();
+        this.updateUIBasedOnPermissions();
+    }
+
+    updateUIBasedOnPermissions() {
+        const canEdit = this.permissions && this.permissions.canEdit;
+        document.querySelectorAll('[data-permission="edit"]').forEach(el => {
+            if (canEdit) {
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        });
     }
 
     // Funkcje pomocnicze
