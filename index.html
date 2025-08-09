@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Zarządzania Pacjentami</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Strona logowania -->
+    <div id="login-page" class="login-container">
+        <div class="login-card card">
+            <div class="card__body">
+                <div class="login-header">
+                    <i class="fas fa-user-md login-icon"></i>
+                    <h2>System Zarządzania Pacjentami</h2>
+                    <p class="login-subtitle">Zaloguj się do systemu</p>
+                </div>
+                <form id="login-form" class="login-form">
+                    <div class="form-group">
+                        <label for="username" class="form-label">Nazwa użytkownika</label>
+                        <input type="text" id="username" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password" class="form-label">Hasło</label>
+                        <input type="password" id="password" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn--primary btn--full-width">
+                        <i class="fas fa-sign-in-alt"></i> Zaloguj się
+                    </button>
+                </form>
+                <div id="login-error" class="error-message hidden"></div>
+                <div class="demo-accounts">
+                    <p class="demo-title">Konta demonstracyjne:</p>
+                    <div class="demo-account-list">
+                        <button class="demo-account" data-username="admin" data-password="admin123">
+                            <strong>Admin:</strong> admin / admin123
+                        </button>
+                        <button class="demo-account" data-username="dr.smith" data-password="doctor123">
+                            <strong>Lekarz:</strong> dr.smith / doctor123
+                        </button>
+                        <button class="demo-account" data-username="nurse.anna" data-password="nurse123">
+                            <strong>Pielęgniarka:</strong> nurse.anna / nurse123
+                        </button>
+                        <button class="demo-account" data-username="viewer.tom" data-password="viewer123">
+                            <strong>Obserwator:</strong> viewer.tom / viewer123
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Główna aplikacja -->
+    <div id="main-app" class="hidden">
+        <!-- Nagłówek -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <i class="fas fa-hospital-alt"></i>
+                    <h1>System Pacjentów</h1>
+                </div>
+                <div class="header-right">
+                    <span id="user-info"></span>
+                    <button id="logout-btn" class="btn btn--outline btn--sm">
+                        <i class="fas fa-sign-out-alt"></i> Wyloguj
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Nawigacja -->
+        <nav class="app-nav">
+            <div class="nav-content">
+                <button id="nav-dashboard" class="nav-btn active">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </button>
+                <button id="nav-add-patient" class="nav-btn">
+                    <i class="fas fa-user-plus"></i> Dodaj Pacjenta
+                </button>
+                <button id="nav-import-lab" class="nav-btn">
+                    <i class="fas fa-file-import"></i> Import Badań
+                </button>
+                <button id="nav-admin" class="nav-btn hidden">
+                    <i class="fas fa-users-cog"></i> Administracja
+                </button>
+            </div>
+        </nav>
+
+        <!-- Sekcja Dashboard -->
+        <section id="dashboard-section" class="app-section active">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Lista Pacjentów</h2>
+                    <div class="search-box">
+                        <input type="text" id="patient-search" class="form-control" placeholder="Szukaj pacjentów...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+                <div id="patients-grid" class="patients-grid"></div>
+            </div>
+        </section>
+
+        <!-- Sekcja Profil Pacjenta -->
+        <section id="patient-profile-section" class="app-section">
+            <div class="container">
+                <div class="profile-header">
+                    <button id="back-to-dashboard" class="btn btn--outline">
+                        <i class="fas fa-arrow-left"></i> Powrót
+                    </button>
+                    <h2 id="patient-name"></h2>
+                </div>
+                
+                <div class="profile-content">
+                    <!-- Informacje podstawowe -->
+                    <div class="card profile-card">
+                        <div class="card__header">
+                            <h3><i class="fas fa-user"></i> Informacje podstawowe</h3>
+                        </div>
+                        <div class="card__body">
+                            <div id="patient-basic-info" class="patient-info-grid"></div>
+                        </div>
+                    </div>
+
+                    <!-- Historia medyczna -->
+                    <div class="card profile-card">
+                        <div class="card__header">
+                            <h3><i class="fas fa-notes-medical"></i> Historia medyczna</h3>
+                            <button id="add-record-btn" class="btn btn--primary btn--sm hidden">
+                                <i class="fas fa-plus"></i> Dodaj wpis
+                            </button>
+                        </div>
+                        <div class="card__body">
+                            <div id="medical-records" class="medical-records"></div>
+                        </div>
+                    </div>
+
+                    <!-- Wyniki badań laboratoryjnych -->
+                    <div class="card profile-card">
+                        <div class="card__header">
+                            <h3><i class="fas fa-flask"></i> Wyniki badań laboratoryjnych</h3>
+                        </div>
+                        <div class="card__body">
+                            <div id="lab-results" class="lab-results"></div>
+                        </div>
+                    </div>
+
+                    <!-- Komentarze -->
+                    <div class="card profile-card">
+                        <div class="card__header">
+                            <h3><i class="fas fa-comments"></i> Komentarze i notatki</h3>
+                            <button id="add-comment-btn" class="btn btn--primary btn--sm hidden">
+                                <i class="fas fa-plus"></i> Dodaj komentarz
+                            </button>
+                        </div>
+                        <div class="card__body">
+                            <div id="comments-section" class="comments-section"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sekcja Dodawanie Pacjenta -->
+        <section id="add-patient-section" class="app-section">
+            <div class="container">
+                <h2>Dodaj Nowego Pacjenta</h2>
+                <div class="card">
+                    <div class="card__body">
+                        <form id="add-patient-form" class="add-patient-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="patient-first-name" class="form-label">Imię</label>
+                                    <input type="text" id="patient-first-name" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="patient-last-name" class="form-label">Nazwisko</label>
+                                    <input type="text" id="patient-last-name" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="patient-pesel" class="form-label">PESEL</label>
+                                    <input type="text" id="patient-pesel" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="patient-dob" class="form-label">Data urodzenia</label>
+                                    <input type="date" id="patient-dob" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="patient-address" class="form-label">Adres</label>
+                                <input type="text" id="patient-address" class="form-control">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="patient-phone" class="form-label">Telefon</label>
+                                    <input type="tel" id="patient-phone" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="patient-email" class="form-label">Email</label>
+                                    <input type="email" id="patient-email" class="form-control">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="patient-blood-type" class="form-label">Grupa krwi</label>
+                                    <select id="patient-blood-type" class="form-control">
+                                        <option value="">Wybierz grupę krwi</option>
+                                        <option value="A+">A+</option>
+                                        <option value="A-">A-</option>
+                                        <option value="B+">B+</option>
+                                        <option value="B-">B-</option>
+                                        <option value="AB+">AB+</option>
+                                        <option value="AB-">AB-</option>
+                                        <option value="O+">O+</option>
+                                        <option value="O-">O-</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="patient-emergency-contact" class="form-label">Kontakt awaryjny</label>
+                                    <input type="text" id="patient-emergency-contact" class="form-control">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="patient-allergies" class="form-label">Alergie</label>
+                                <textarea id="patient-allergies" class="form-control" rows="2"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="patient-chronic-conditions" class="form-label">Choroby przewlekłe</label>
+                                <textarea id="patient-chronic-conditions" class="form-control" rows="2"></textarea>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn--primary">
+                                    <i class="fas fa-save"></i> Zapisz Pacjenta
+                                </button>
+                                <button type="button" id="cancel-add-patient" class="btn btn--outline">
+                                    Anuluj
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sekcja Import Badań -->
+        <section id="import-lab-section" class="app-section">
+            <div class="container">
+                <h2>Import Badań Laboratoryjnych</h2>
+                <div class="card">
+                    <div class="card__body">
+                        <div class="form-group">
+                            <label for="import-patient-select" class="form-label">Wybierz pacjenta</label>
+                            <select id="import-patient-select" class="form-control">
+                                <option value="">Wybierz pacjenta</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="import-test-name" class="form-label">Nazwa badania</label>
+                            <input type="text" id="import-test-name" class="form-control" placeholder="np. Morfologia, Biochemia">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Wyniki badań</label>
+                            <div id="lab-import-table" class="lab-import-table">
+                                <table class="results-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Wynik</th>
+                                            <th>Akcje</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="lab-results-tbody">
+                                        <tr>
+                                            <td><input type="date" class="form-control" name="result-date"></td>
+                                            <td><input type="text" class="form-control" name="result-value" placeholder="Wprowadź wynik badania"></td>
+                                            <td><button type="button" class="btn btn--outline btn--sm remove-result"><i class="fas fa-trash"></i></button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <button type="button" id="add-result-row" class="btn btn--outline btn--sm">
+                                    <i class="fas fa-plus"></i> Dodaj wiersz
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" id="import-lab-results" class="btn btn--primary">
+                                <i class="fas fa-upload"></i> Importuj Badania
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Panel administratora -->
+        <section id="admin-section" class="app-section">
+            <div class="container">
+                <h2>Panel Administratora</h2>
+                <div class="admin-tabs">
+                    <button class="admin-tab active" data-tab="users">Użytkownicy</button>
+                    <button class="admin-tab" data-tab="permissions">Uprawnienia</button>
+                </div>
+                
+                <div id="admin-users-tab" class="admin-tab-content active">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Zarządzanie użytkownikami</h3>
+                            <button id="add-user-btn" class="btn btn--primary btn--sm">
+                                <i class="fas fa-plus"></i> Dodaj użytkownika
+                            </button>
+                        </div>
+                        <div class="card__body">
+                            <div id="users-list" class="users-list"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="admin-permissions-tab" class="admin-tab-content">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Zarządzanie uprawnieniami</h3>
+                        </div>
+                        <div class="card__body">
+                            <div id="permissions-list" class="permissions-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modalne okna -->
+    <div id="add-record-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Dodaj wpis medyczny</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="add-record-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="record-date" class="form-label">Data</label>
+                        <input type="date" id="record-date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="record-type" class="form-label">Typ wizyty</label>
+                        <select id="record-type" class="form-control" required>
+                            <option value="">Wybierz typ</option>
+                            <option value="Wizyta kontrolna">Wizyta kontrolna</option>
+                            <option value="Konsultacja">Konsultacja</option>
+                            <option value="Operacja">Operacja</option>
+                            <option value="Badanie">Badanie</option>
+                            <option value="Inne">Inne</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="record-description" class="form-label">Opis</label>
+                        <textarea id="record-description" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="record-diagnosis" class="form-label">Diagnoza</label>
+                        <input type="text" id="record-diagnosis" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="record-treatment" class="form-label">Leczenie</label>
+                        <textarea id="record-treatment" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn--primary">Zapisz</button>
+                    <button type="button" class="btn btn--outline modal-close">Anuluj</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="add-comment-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Dodaj komentarz</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="add-comment-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="comment-text" class="form-label">Komentarz</label>
+                        <textarea id="comment-text" class="form-control" rows="4" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn--primary">Dodaj komentarz</button>
+                    <button type="button" class="btn btn--outline modal-close">Anuluj</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
