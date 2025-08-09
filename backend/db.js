@@ -18,6 +18,13 @@ if (process.env.NODE_ENV === 'test') {
       last_name TEXT NOT NULL,
       pesel TEXT NOT NULL
     );
+    CREATE TABLE lab_results (
+      id SERIAL PRIMARY KEY,
+      patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+      test_name TEXT NOT NULL,
+      date DATE NOT NULL,
+      value TEXT NOT NULL
+    );
   `);
   const adapter = db.adapters.createPg();
   pool = new adapter.Pool();
