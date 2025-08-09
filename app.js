@@ -312,9 +312,15 @@ class PatientManagementSystem {
 
         // Formularz dodawania wpisu medycznego
         document.getElementById('add-record-form').addEventListener('submit', (e) => this.handleAddMedicalRecord(e));
+        this.setupAutoFocus('add-record-form');
 
         // Formularz dodawania komentarza
         document.getElementById('add-comment-form').addEventListener('submit', (e) => this.handleAddComment(e));
+        this.setupAutoFocus('add-comment-form');
+
+        // Formularz dodawania wyniku badania
+        document.getElementById('add-lab-result-form').addEventListener('submit', (e) => this.handleAddLabResult(e));
+        this.setupAutoFocus('add-lab-result-form');
     }
 
     // Uwierzytelnianie
@@ -629,12 +635,16 @@ class PatientManagementSystem {
         const permissions = this.rolePermissions[this.currentUser.role];
         const addRecordBtn = document.getElementById('add-record-btn');
         const addCommentBtn = document.getElementById('add-comment-btn');
+        const addLabResultBtn = document.getElementById('add-lab-result-btn');
 
         if (permissions.canCreate || permissions.canEdit) {
             addRecordBtn.classList.remove('hidden');
             addRecordBtn.onclick = () => this.showAddRecordModal();
+            addLabResultBtn.classList.remove('hidden');
+            addLabResultBtn.onclick = () => this.showAddLabResultModal();
         } else {
             addRecordBtn.classList.add('hidden');
+            addLabResultBtn.classList.add('hidden');
         }
 
         if (permissions.canComment) {
@@ -843,22 +853,36 @@ class PatientManagementSystem {
     showAddRecordModal() {
         const modal = document.getElementById('add-record-modal');
         modal.classList.remove('hidden');
-        
+
         // Ustaw dzisiejszą datę
         document.getElementById('record-date').value = new Date().toISOString().split('T')[0];
     }
 
     handleAddMedicalRecord(e) {
         e.preventDefault();
-        
+
+        if (!this.currentPatientId) {
+            alert('Nie wybrano pacjenta');
+            return;
+        }
+
+        const date = document.getElementById('record-date').value;
+        const type = document.getElementById('record-type').value.trim();
+        const description = document.getElementById('record-description').value.trim();
+
+        if (!date || !type || !description) {
+            alert('Wypełnij wszystkie wymagane pola');
+            return;
+        }
+
         const record = {
             id: Date.now(),
             patientId: this.currentPatientId,
-            date: document.getElementById('record-date').value,
-            type: document.getElementById('record-type').value,
-            description: document.getElementById('record-description').value,
-            diagnosis: document.getElementById('record-diagnosis').value,
-            treatment: document.getElementById('record-treatment').value,
+            date,
+            type,
+            description,
+            diagnosis: document.getElementById('record-diagnosis').value.trim(),
+            treatment: document.getElementById('record-treatment').value.trim(),
             doctorId: this.currentUser.id,
             doctorName: `${this.currentUser.firstName} ${this.currentUser.lastName}`
         };
@@ -880,11 +904,22 @@ class PatientManagementSystem {
 
     handleAddComment(e) {
         e.preventDefault();
-        
+
+        if (!this.currentPatientId) {
+            alert('Nie wybrano pacjenta');
+            return;
+        }
+
+        const text = document.getElementById('comment-text').value.trim();
+        if (!text) {
+            alert('Wprowadź komentarz');
+            return;
+        }
+
         const comment = {
             id: Date.now(),
             patientId: this.currentPatientId,
-            text: document.getElementById('comment-text').value,
+            text,
             authorId: this.currentUser.id,
             authorName: `${this.currentUser.firstName} ${this.currentUser.lastName}`,
             date: new Date().toISOString()
@@ -892,12 +927,77 @@ class PatientManagementSystem {
 
         this.comments.push(comment);
         this.saveData();
-        
+
         document.getElementById('add-comment-modal').classList.add('hidden');
         document.getElementById('add-comment-form').reset();
         this.renderComments(this.currentPatientId);
-        
+
         alert('Komentarz został dodany!');
+    }
+
+    showAddLabResultModal() {
+        const modal = document.getElementById('add-lab-result-modal');
+        modal.classList.remove('hidden');
+        document.getElementById('lab-result-date').value = new Date().toISOString().split('T')[0];
+    }
+
+    handleAddLabResult(e) {
+        e.preventDefault();
+
+        if (!this.currentPatientId) {
+            alert('Nie wybrano pacjenta');
+            return;
+        }
+
+        const testName = document.getElementById('lab-test-name').value.trim();
+        const date = document.getElementById('lab-result-date').value;
+        const value = document.getElementById('lab-result-value').value.trim();
+
+        if (!testName || !date || !value) {
+            alert('Wypełnij wszystkie pola');
+            return;
+        }
+
+        const existingTest = this.labResults.find(test =>
+            test.patientId === this.currentPatientId && test.testName === testName
+        );
+
+        if (existingTest) {
+            existingTest.results[date] = value;
+        } else {
+            this.labResults.push({
+                patientId: this.currentPatientId,
+                testName,
+                results: { [date]: value }
+            });
+        }
+
+        this.saveData();
+
+        document.getElementById('add-lab-result-modal').classList.add('hidden');
+        document.getElementById('add-lab-result-form').reset();
+        this.renderLabResults(this.currentPatientId);
+
+        alert('Wynik badania został dodany!');
+    }
+
+    setupAutoFocus(formId) {
+        const form = document.getElementById(formId);
+        if (!form) return;
+        const inputs = form.querySelectorAll('input, textarea, select');
+        inputs.forEach((input, index) => {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const next = inputs[index + 1];
+                    if (next) {
+                        next.focus();
+                    } else {
+                        form.requestSubmit();
+                    }
+                }
+            });
+        });
     }
 
     // Funkcje pomocnicze
