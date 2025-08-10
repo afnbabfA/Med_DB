@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const cors = require('cors');
 const pool = require('./db');
-const auth = require('./middleware');
+const { auth, permit } = require('./middleware');
 const multer = require('multer');
 const csvParse = require('csv-parse/sync');
 const xlsx = require('xlsx');
@@ -21,13 +21,23 @@ async function init() {
       id SERIAL PRIMARY KEY,
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      role TEXT NOT NULL
+      role TEXT NOT NULL,
+      patient_access INTEGER[] DEFAULT '{}'::INTEGER[]
     );`);
     await pool.query(`CREATE TABLE IF NOT EXISTS patients (
       id SERIAL PRIMARY KEY,
       first_name TEXT NOT NULL,
       last_name TEXT NOT NULL,
       pesel TEXT NOT NULL
+    );`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS medical_records (
+      id SERIAL PRIMARY KEY,
+      patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+      date DATE NOT NULL,
+      type TEXT NOT NULL,
+      description TEXT NOT NULL,
+      diagnosis TEXT,
+      treatment TEXT
     );`);
     await pool.query(`CREATE TABLE IF NOT EXISTS lab_results (
       id SERIAL PRIMARY KEY,
@@ -39,8 +49,8 @@ async function init() {
   }
   const hashed = await bcrypt.hash('admin123', 10);
   await pool.query(
-    `INSERT INTO users (username, password, role) VALUES ($1, $2, $3) ON CONFLICT (username) DO NOTHING`,
-    ['admin', hashed, 'admin']
+    `INSERT INTO users (username, password, role, patient_access) VALUES ($1, $2, $3, $4) ON CONFLICT (username) DO NOTHING`,
+    ['admin', hashed, 'admin', null]
   );
 }
 
@@ -58,16 +68,31 @@ app.post('/api/login', [
   if (!user) return res.status(401).json({ message: 'Błędne dane logowania' });
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.status(401).json({ message: 'Błędne dane logowania' });
-  const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET || 'sekret', { expiresIn: '1h' });
-  res.json({ token });
+  const patientAccess = user.patient_access || [];
+  const token = jwt.sign({ id: user.id, role: user.role, patientAccess }, process.env.JWT_SECRET || 'sekret', { expiresIn: '1h' });
+  const permissions = {
+    canAddPatient: ['admin', 'doctor', 'nurse'].includes(user.role),
+    canAddRecord: ['admin', 'doctor'].includes(user.role),
+    canAddComment: ['admin', 'doctor', 'nurse'].includes(user.role),
+    canAddLabResult: ['admin', 'doctor', 'nurse'].includes(user.role),
+    isAdmin: user.role === 'admin'
+  };
+  res.json({ token, role: user.role, patientAccess, permissions });
 });
 
-app.get('/api/patients', auth, async (req, res) => {
-  const result = await pool.query('SELECT id, first_name, last_name, pesel FROM patients');
+app.get('/api/patients', auth, permit('read'), async (req, res) => {
+  let result;
+  if (req.user.role === 'admin') {
+    result = await pool.query('SELECT id, first_name, last_name, pesel FROM patients');
+  } else {
+    const ids = req.user.patientAccess || [];
+    if (ids.length === 0) return res.json([]);
+    result = await pool.query('SELECT id, first_name, last_name, pesel FROM patients WHERE id = ANY($1)', [ids]);
+  }
   res.json(result.rows);
 });
 
-app.post('/api/patients', auth, [
+app.post('/api/patients', auth, permit('write'), [
   body('firstName').notEmpty(),
   body('lastName').notEmpty(),
   body('pesel').isLength({ min: 11, max: 11 })
@@ -84,7 +109,87 @@ app.post('/api/patients', auth, [
   res.status(201).json(result.rows[0]);
 });
 
-app.post('/api/lab-results/import', auth, upload.single('file'), async (req, res) => {
+app.get('/api/patients/:id', auth, permit('read'), async (req, res) => {
+  const result = await pool.query('SELECT id, first_name, last_name, pesel FROM patients WHERE id=$1', [req.params.id]);
+  if (result.rows.length === 0) return res.status(404).json({ message: 'Nie znaleziono pacjenta' });
+  res.json(result.rows[0]);
+});
+
+app.put('/api/patients/:id', auth, permit('write'), [
+  body('firstName').notEmpty(),
+  body('lastName').notEmpty(),
+  body('pesel').isLength({ min: 11, max: 11 })
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  const { firstName, lastName, pesel } = req.body;
+  const result = await pool.query(
+    'UPDATE patients SET first_name=$1, last_name=$2, pesel=$3 WHERE id=$4 RETURNING *',
+    [firstName, lastName, pesel, req.params.id]
+  );
+  if (result.rows.length === 0) return res.status(404).json({ message: 'Nie znaleziono pacjenta' });
+  res.json(result.rows[0]);
+});
+
+app.delete('/api/patients/:id', auth, permit('write'), async (req, res) => {
+  await pool.query('DELETE FROM patients WHERE id=$1', [req.params.id]);
+  res.status(204).end();
+});
+
+app.get('/api/medical-records', auth, permit('read'), async (req, res) => {
+  const { patientId } = req.query;
+  if (!patientId) return res.status(400).json({ message: 'patientId required' });
+  const result = await pool.query('SELECT id, patient_id, date, type, description, diagnosis, treatment FROM medical_records WHERE patient_id=$1 ORDER BY date DESC', [patientId]);
+  res.json(result.rows);
+});
+
+app.post('/api/medical-records', auth, permit('write'), [
+  body('patientId').isInt(),
+  body('date').notEmpty(),
+  body('type').notEmpty(),
+  body('description').notEmpty()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  const { patientId, date, type, description, diagnosis, treatment } = req.body;
+  const result = await pool.query(
+    'INSERT INTO medical_records (patient_id, date, type, description, diagnosis, treatment) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+    [patientId, date, type, description, diagnosis, treatment]
+  );
+  res.status(201).json(result.rows[0]);
+});
+
+app.put('/api/medical-records/:id', auth, async (req, res) => {
+  const recordRes = await pool.query('SELECT patient_id FROM medical_records WHERE id=$1', [req.params.id]);
+  if (recordRes.rows.length === 0) return res.status(404).json({ message: 'Nie znaleziono rekordu' });
+  const patientId = recordRes.rows[0].patient_id;
+  const access = req.user.role === 'admin' ? true : (req.user.patientAccess || []).includes(patientId);
+  const canWrite = ['admin', 'doctor', 'nurse'].includes(req.user.role);
+  if (!canWrite || !access) return res.status(403).json({ message: 'Brak uprawnień' });
+  const { date, type, description, diagnosis, treatment } = req.body;
+  const result = await pool.query(
+    'UPDATE medical_records SET date=$1, type=$2, description=$3, diagnosis=$4, treatment=$5 WHERE id=$6 RETURNING *',
+    [date, type, description, diagnosis, treatment, req.params.id]
+  );
+  res.json(result.rows[0]);
+});
+
+app.delete('/api/medical-records/:id', auth, async (req, res) => {
+  const recordRes = await pool.query('SELECT patient_id FROM medical_records WHERE id=$1', [req.params.id]);
+  if (recordRes.rows.length === 0) return res.status(404).json({ message: 'Nie znaleziono rekordu' });
+  const patientId = recordRes.rows[0].patient_id;
+  const access = req.user.role === 'admin' ? true : (req.user.patientAccess || []).includes(patientId);
+  const canWrite = ['admin', 'doctor', 'nurse'].includes(req.user.role);
+  if (!canWrite || !access) return res.status(403).json({ message: 'Brak uprawnień' });
+  await pool.query('DELETE FROM medical_records WHERE id=$1', [req.params.id]);
+  res.status(204).end();
+});
+
+app.post('/api/lab-results/import', auth, permit('write'), upload.single('file'), async (req, res) => {
   const { patientId } = req.body;
   if (!patientId || !req.file) {
     return res.status(400).json({ message: 'Brak danych' });
@@ -113,7 +218,25 @@ app.post('/api/lab-results/import', auth, upload.single('file'), async (req, res
   }
 });
 
-app.get('/api/lab-results', auth, async (req, res) => {
+app.post('/api/lab-results', auth, permit('write'), [
+  body('patientId').isInt(),
+  body('testName').notEmpty(),
+  body('date').notEmpty(),
+  body('value').notEmpty()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  const { patientId, testName, date, value } = req.body;
+  const result = await pool.query(
+    'INSERT INTO lab_results (patient_id, test_name, date, value) VALUES ($1,$2,$3,$4) RETURNING *',
+    [patientId, testName, date, value]
+  );
+  res.status(201).json(result.rows[0]);
+});
+
+app.get('/api/lab-results', auth, permit('read'), async (req, res) => {
   const { patientId, testName, from, to } = req.query;
   if (!patientId) return res.status(400).json({ message: 'patientId required' });
   let query = 'SELECT test_name, date, value FROM lab_results WHERE patient_id=$1';
