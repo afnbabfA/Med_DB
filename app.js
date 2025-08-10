@@ -1,6 +1,7 @@
 // Prosty frontend korzystający z backendu Express
 let token = null;
 let currentPatientId = null;
+let permissions = {};
 
 async function login(e) {
   e.preventDefault();
@@ -18,8 +19,12 @@ async function login(e) {
     return;
   }
   token = data.token;
+  permissions = data.permissions || {};
   document.getElementById('login-page').classList.add('hidden');
   document.getElementById('main-app').classList.remove('hidden');
+  if (permissions.canAddPatient) document.getElementById('nav-add-patient').classList.remove('hidden');
+  if (permissions.canAddLabResult) document.getElementById('nav-import-lab').classList.remove('hidden');
+  if (permissions.isAdmin) document.getElementById('nav-admin').classList.remove('hidden');
   loadPatients();
 }
 
@@ -44,9 +49,9 @@ async function loadPatients() {
       document.getElementById('dashboard-section').classList.remove('active');
       document.getElementById('patient-profile-section').classList.add('active');
       document.getElementById('patient-name').textContent = card.getAttribute('data-name');
-      document.getElementById('add-record-btn').classList.remove('hidden');
-      document.getElementById('add-comment-btn').classList.remove('hidden');
-      document.getElementById('add-lab-result-btn').classList.remove('hidden');
+      if (permissions.canAddRecord) document.getElementById('add-record-btn').classList.remove('hidden');
+      if (permissions.canAddComment) document.getElementById('add-comment-btn').classList.remove('hidden');
+      if (permissions.canAddLabResult) document.getElementById('add-lab-result-btn').classList.remove('hidden');
       loadMedicalRecords();
       loadLabResults();
       loadComments();
